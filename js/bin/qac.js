@@ -3,9 +3,7 @@
   var QAC;
 
   QAC = (function() {
-    var KeyList, TipHandle, defaultDict, getCurrentWord, initInputHandle, initWordList, inputArea, isPrintableCharacter, log, logArea, tipHandle, wordTrie;
-
-    inputArea = null;
+    var TipHandle, defaultDict, getCurrentWord, initInputHandle, initWordList, isPrintableCharacter, isSpecialType1, keys, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
 
     logArea = null;
 
@@ -14,6 +12,7 @@
     defaultDict = [
       {
         "static": true,
+        sendUpdates: false,
         url: 'js/words.php?jsoncallback=?'
       }
     ];
@@ -21,18 +20,81 @@
     wordTrie = null;
 
     TipHandle = (function() {
-      var tipArea;
+      var MaxRenderCount, allCandidates, highlightLength, offset, position, showTip, startOffset, tipArea;
 
       tipArea = null;
 
-      function TipHandle(eleSel) {
+      startOffset = 0;
+
+      MaxRenderCount = 10;
+
+      allCandidates = null;
+
+      highlightLength = 0;
+
+      position = null;
+
+      offset = null;
+
+      showTip = function() {
+        var attachCandidate, candidatesToShow, ele, renderCount, word, _i, _j, _len, _len1, _ref;
+        attachCandidate = function(word) {
+          var candidate;
+          candidate = $("<span></span>").addClass("outer");
+          candidate.html(word.substring(highlightLength));
+          candidate.prepend($("<span></span>").addClass("highlight").html(word.substring(0, highlightLength)));
+          return tipArea.find("div.inner").append(candidate);
+        };
+        tipArea.find("span").remove();
+        renderCount = MaxRenderCount > allCandidates.length ? allCandidates.length : MaxRenderCount;
+        candidatesToShow = allCandidates.slice(startOffset, startOffset + renderCount);
+        if (startOffset + renderCount > allCandidates.length) {
+          _ref = allCandidates.slice(0, startOffset + renderCount - allCandidates.length);
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            ele = _ref[_i];
+            candidatesToShow.push(ele);
+          }
+        }
+        if (candidatesToShow.length === 0) {
+          return false;
+        }
+        for (_j = 0, _len1 = candidatesToShow.length; _j < _len1; _j++) {
+          word = candidatesToShow[_j];
+          attachCandidate(word);
+        }
+        tipArea.css({
+          left: offset.left + position.left,
+          top: offset.top + position.top
+        });
+        tipArea.fadeIn(100);
+        return candidatesToShow[0];
+      };
+
+      function TipHandle() {
         tipArea = $("<div></div>").addClass("qac_tip");
-        tipArea.insertAfter(eleSel);
+        tipArea.append($("<div></div>").addClass("inner"));
+        $("body").append(tipArea);
       }
 
-      TipHandle.prototype.show = function(words, pos) {
-        tipArea.html("Ab");
-        return tipArea.fadeIn();
+      TipHandle.prototype.hide = function() {
+        return tipArea.fadeOut(50);
+      };
+
+      TipHandle.prototype.show = function(_words, _highlightLength, _pos, _offset) {
+        startOffset = 0;
+        allCandidates = _words;
+        highlightLength = _highlightLength;
+        position = _pos;
+        offset = _offset;
+        return showTip();
+      };
+
+      TipHandle.prototype.showNext = function() {
+        startOffset += 1;
+        if (startOffset === allCandidates.length) {
+          startOffset = 0;
+        }
+        return showTip();
       };
 
       return TipHandle;
@@ -83,66 +145,166 @@
       return _results;
     };
 
-    KeyList = {
+    keys = {
       tab: 9,
-      space: 32
+      space: 32,
+      backspace: 8,
+      enter: 13,
+      escape: 27,
+      down: 40
     };
 
     isPrintableCharacter = function(keyCode) {
       return (keyCode >= 48 && keyCode <= 90) || (keyCode >= 96 && keyCode <= 111) || (keyCode >= 186 && keyCode <= 192) || (keyCode >= 219 && keyCode <= 222);
     };
 
-    getCurrentWord = function(position) {
+    isSpecialType1 = function(keyCode) {
+      return keyCode === keys.backspace || keyCode === keys.space;
+    };
+
+    getCurrentWord = function(inputArea, position) {
       var spacePos, text;
       text = inputArea.val().substring(0, position + 1);
       spacePos = text.lastIndexOf(" ");
       if (spacePos === -1) {
         return text;
+      } else if (spacePos === text.length) {
+        return "";
       }
       return text.substring(spacePos + 1);
     };
 
-    initInputHandle = function() {
-      return inputArea.keyup(function(e) {
-        var pos, word;
-        pos = $(this).caret();
-        if (pos.end !== pos.start) {
-          return tipHandle.hide();
-        } else {
-          if (isPrintableCharacter(e.keyCode)) {
-            word = getCurrentWord(pos.start);
-            return console.log(word);
-          } else {
+    renderOnInputArea = function(inputArea, candidate, wordLength, caretPosStart, caretPosEnd) {
+      var newVal, oldVal, partToRender;
+      partToRender = candidate.substring(wordLength);
+      oldVal = inputArea.val();
+      if (!(caretPosEnd != null)) {
+        caretPosEnd = caretPosStart;
+      }
+      newVal = oldVal.substring(0, caretPosStart) + partToRender + oldVal.substring(caretPosEnd);
+      inputArea.val(newVal);
+      return inputArea.caret({
+        start: caretPosStart,
+        end: partToRender.length + caretPosStart
+      });
+    };
 
+    takeInput = function(inputArea) {
+      var candidates, currentCandidate, pos, word;
+      pos = inputArea.caret();
+      word = getCurrentWord(inputArea, pos.start);
+      if (word.length === 0) {
+        tipHandle.hide();
+        return word;
+      }
+      candidates = wordTrie.getKeys(word);
+      currentCandidate = tipHandle.show(candidates, word.length, inputArea.getCaretPosition(), inputArea.offset());
+      if (currentCandidate) {
+        renderOnInputArea(inputArea, currentCandidate, word.length, pos.start);
+      }
+      return word;
+    };
+
+    initInputHandle = function(inputAreaSelector) {
+      var disable, disableToggler, inputArea, isDisabled, word;
+      inputArea = $(inputAreaSelector);
+      word = null;
+      isDisabled = false;
+      disable = function(pos) {
+        renderOnInputArea(inputArea, "", word.length, pos.start, pos.end);
+        return tipHandle.hide();
+      };
+      disableToggler = function(pos) {
+        isDisabled = !isDisabled;
+        if (isDisabled) {
+          return disable(pos);
+        } else {
+          return word = takeInput(inputArea);
+        }
+      };
+      inputArea.keydown(function(e) {
+        var pos;
+        pos = $(this).caret();
+        if ((!isDisabled) && (pos.start !== pos.end) && (e.keyCode === keys.enter || e.keyCode === keys.tab || e.keyCode === keys.backspace)) {
+          e.preventDefault();
+        }
+        if ((!isDisabled) && (e.keyCode === keys.down)) {
+          return e.preventDefault();
+        }
+      });
+      return inputArea.keyup(function(e) {
+        var commonHandles, newPos, pos;
+        pos = $(this).caret();
+        commonHandles = function() {
+          var newCandidate;
+          if (e.keyCode === keys.escape) {
+            return disableToggler(pos);
+          } else if (e.keyCode === keys.backspace) {
+            if (isDisabled && getCurrentWord(inputArea).length === 0) {
+              isDisabled = false;
+            }
+            isDisabled = true;
+            return disable(pos);
+          } else if (e.keyCode === keys.down) {
+            e.preventDefault();
+            newCandidate = tipHandle.showNext();
+            if (newCandidate != null) {
+              return renderOnInputArea(inputArea, newCandidate, word.length, pos.start, pos.end);
+            }
+          }
+        };
+        if (pos.end !== pos.start) {
+          if (e.keyCode === keys.enter || e.keyCode === keys.tab) {
+            newPos = pos.end;
+            if (newPos < pos.start) {
+              newPos = pos.start;
+            }
+            inputArea.caret({
+              start: newPos + 1,
+              end: newPos + 1
+            });
+            return e.preventDefault();
+          } else {
+            return commonHandles();
+          }
+        } else {
+          if ((!isDisabled) && ((isPrintableCharacter(e.keyCode)) || (isSpecialType1(e.keyCode)))) {
+            return word = takeInput(inputArea);
+          } else if (e.keyCode === keys.space && isDisabled) {
+            return isDisabled = false;
+          } else {
+            return commonHandles();
           }
         }
       });
     };
 
-    function QAC(inputAreaSelector, logAreaSel, dictionaries) {
+    function QAC(logAreaSel, dictionaries) {
       if (dictionaries == null) {
         dictionaries = defaultDict;
-      }
-      if (!(inputAreaSelector != null)) {
-        log("Unknown inputAreaSelector.", "error");
-        return;
       }
       if (logAreaSel != null) {
         logArea = $(logAreaSel);
         log("Debugging started");
       }
-      inputArea = $(inputAreaSelector);
       initWordList(dictionaries);
-      tipHandle = new TipHandle(inputAreaSelector);
-      initInputHandle();
+      tipHandle = new TipHandle();
     }
+
+    QAC.prototype.listen = function(inputAreaSelector) {
+      if (inputAreaSelector != null) {
+        return initInputHandle(inputAreaSelector);
+      }
+    };
 
     return QAC;
 
   })();
 
   $(function() {
-    return new QAC("#tryarea", "table.log tbody");
+    var qac;
+    qac = new QAC("table.log tbody");
+    return qac.listen("#tryarea");
   });
 
 }).call(this);

@@ -43,18 +43,14 @@ div.qac_tip {
 	width: 300px;
 	height: 20px;
 	position: absolute;
-	top: 150px;
-	left: 100px;
 	display: none;
 	text-align: left;
 
-	cursor: pointer;
 	text-decoration: none;
 	font: 14px/100% Arial, Helvetica, sans-serif;
 	padding: 4px 2px 0px;
 	overflow: hidden;
 
-	text-shadow: 0 1px 1px rgba(0,0,0,.1);
 	-webkit-border-radius: 1em; 
 	-moz-border-radius: 1em;
 	border-radius: 1em;
@@ -67,11 +63,8 @@ div.qac_tip {
 	box-shadow: 0 1px 2px rgba(0,0,0,.1);
 
 	color: #606060;
-	border: solid 2px #333;
-	background: #fff;
-	background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#f0f0f0));
-	background: -moz-linear-gradient(top,  #fff,  #f0f0f0);
-	filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f0f0f0');
+	border: solid 1px #bcd3df;
+	background: #eaf7fe;
 }
 div.qac_tip:before {
 	background: url(../img/qac_tip.png) no-repeat top left;
@@ -80,4 +73,25 @@ div.qac_tip:before {
 	content: '';
 	float: left;
 	margin: -5px 0 0 -5px; 
+}
+
+div.qac_tip div.inner {
+	width: 1000px;
+}
+div.qac_tip span.outer {
+	padding: 0px 3px;
+	border-right: 1px solid #bcd3df;
+	color: #8aaaba;
+}
+
+div.qac_tip span.highlight {
+	font-weight: bold;
+	color: #679bb5;
+}
+div.qac_tip span.outer:first-child {
+	color: red;
+}
+
+div.qac_tip span.outer:first-child span.highlight {
+	color: red;
 }
