@@ -7,6 +7,7 @@ class QAC
 		url: 'js/words.php?jsoncallback=?'
 	}]
 	wordTrie = null
+	globalInputHandle = null
 	
 	class TipHandle
 		tipArea = null
@@ -55,7 +56,11 @@ class QAC
 			if startOffset == allCandidates.length
 				startOffset = 0
 			return showTip()
-
+		showPrevious: () ->
+			startOffset -= 1
+			if startOffset < 0
+				startOffset = allCandidates.length - 1
+			return showTip()
 	log = (msg, cls = "info") ->
 		if logArea?
 			logArea.prepend $("<tr></tr>").addClass(cls).append $("<td></td>").html(msg)
@@ -85,6 +90,7 @@ class QAC
 		backspace: 8
 		enter: 13
 		escape: 27
+		up: 38
 		down: 40
 	isPrintableCharacter = (keyCode) ->
 		return ((keyCode >= 48 && keyCode <= 90) ||     # 0-1a-z
@@ -125,6 +131,29 @@ class QAC
 		if currentCandidate
 			renderOnInputArea inputArea, currentCandidate, word.length, pos.start 
 		return word
+
+	class GlobalInputHandle
+		isActive = false
+		isDisabled = false
+		currentFocusElement = null
+		userWord = null
+		addEventHandlers = (ele) ->
+			ele.bind "keyup", (event) ->
+				# TODO: A lot of things.
+			ele.bind "keydown", (event) ->
+				# TODO: A lot of things.
+			ele.bind "focus", (event) ->
+				# TODO: Start listening.
+				inFocus this, event
+			ele.bind "blur", (event) ->
+				# TODO: Disable tips.
+		constructor: () ->
+			# Do Nothing.
+		# Attach New Element.
+		addElement: (eleSelector) ->
+			ele = $(eleSelector)
+			addEventHandlers ele
+
 	initInputHandle = (inputAreaSelector) ->
 		inputArea = $(inputAreaSelector)
 		word = null
@@ -143,7 +172,7 @@ class QAC
 			pos = $(this).caret()
 			if (!isDisabled) and (pos.start != pos.end) and (e.keyCode == keys.enter or e.keyCode == keys.tab or e.keyCode == keys.backspace)
 				e.preventDefault()
-			if (!isDisabled) and (e.keyCode == keys.down)
+			if (!isDisabled) and (e.keyCode == keys.down or e.keyCode == keys.up)
 				e.preventDefault()
 		)
 		inputArea.keyup((e) ->
@@ -155,12 +184,18 @@ class QAC
 				else if e.keyCode == keys.backspace
 					if isDisabled and getCurrentWord(inputArea).length == 0
 						isDisabled = false
+
 					isDisabled = true
 					disable(pos)
-				else if e.keyCode == keys.down
+				else if e.keyCode == keys.down and !isDisabled
 					e.preventDefault()
 					# Change render to next candidate
 					newCandidate = tipHandle.showNext()
+					if newCandidate?
+						renderOnInputArea inputArea, newCandidate, word.length, pos.start, pos.end
+				else if e.keyCode == keys.up and !isDisabled
+					e.preventDefault()
+					newCandidate = tipHandle.showPrevious()
 					if newCandidate?
 						renderOnInputArea inputArea, newCandidate, word.length, pos.start, pos.end
 			if pos.end != pos.start
@@ -191,9 +226,10 @@ class QAC
 			log "Debugging started"
 		initWordList dictionaries
 		tipHandle = new TipHandle()
+		globalInputHandle = new GlobalInputHandle()
 	listen: (inputAreaSelector) ->
 		if inputAreaSelector?
-			initInputHandle inputAreaSelector
+			globalInputHandle.addElement inputAreaSelector
 $ ->
 	qac = new QAC "table.log tbody"
 	qac.listen "#tryarea"

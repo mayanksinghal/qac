@@ -51,6 +51,15 @@
     	<div class="row">
     		<div class="span4">
     			<h1>QuickAutoComplete</h1>
+          <p style="width: 250px; text-align:center; margin:auto;padding-top:200px;">
+            <a rel="license"
+                href="http://creativecommons.org/licenses/by/3.0/deed.en_US">
+                  <img alt="Creative Commons License"
+                      style="border-width:0"
+                      src="http://i.creativecommons.org/l/by/3.0/88x31.png" />
+            </a><br />
+            <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">QAC</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="http://brotherboard.com" property="cc:attributionName" rel="cc:attributionURL">Mayank Singhal</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>.
+          </p>
     		</div>
     		<div class="span4">
     			<div class="well">
@@ -58,7 +67,7 @@
 						<legend>Try it here!</legend>
 						<textarea name="" id="tryarea"></textarea>
 						<div class="hint">
-							<small>Try typing "Abacadabra"</small>
+							<small>Try typing "arrival"</small>
 						</div>
 					</form>
 					
@@ -81,12 +90,12 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="js/jquery-1.8.0.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="js/closure-library/closure/goog/base.js"></script>
+    <script type="text/javascript" src="/assets/closure-library/closure/goog/base.js"></script>
     <script type="text/javascript">
     	goog.require('goog.structs.Trie');
     </script>
     <script type="text/javascript" src="js/jquery.caret.1.02.min.js"></script>
-    <script type="text/javascript" src="js/jquery.caretposition.js"></script>
+    // <script type="text/javascript" src="js/jquery.caretposition.js"></script>
     <script type="text/javascript" src="js/bin/qac.js"></script>
   </body>
 </html>

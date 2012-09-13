@@ -3,7 +3,7 @@
   var QAC;
 
   QAC = (function() {
-    var TipHandle, defaultDict, getCurrentWord, initInputHandle, initWordList, isPrintableCharacter, isSpecialType1, keys, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
+    var GlobalInputHandle, TipHandle, defaultDict, getCurrentWord, globalInputHandle, initInputHandle, initWordList, isPrintableCharacter, isSpecialType1, keys, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
 
     logArea = null;
 
@@ -18,6 +18,8 @@
     ];
 
     wordTrie = null;
+
+    globalInputHandle = null;
 
     TipHandle = (function() {
       var MaxRenderCount, allCandidates, highlightLength, offset, position, showTip, startOffset, tipArea;
@@ -97,6 +99,14 @@
         return showTip();
       };
 
+      TipHandle.prototype.showPrevious = function() {
+        startOffset -= 1;
+        if (startOffset < 0) {
+          startOffset = allCandidates.length - 1;
+        }
+        return showTip();
+      };
+
       return TipHandle;
 
     })();
@@ -151,6 +161,7 @@
       backspace: 8,
       enter: 13,
       escape: 27,
+      up: 38,
       down: 40
     };
 
@@ -205,6 +216,38 @@
       return word;
     };
 
+    GlobalInputHandle = (function() {
+      var addEventHandlers, currentFocusElement, isActive, isDisabled, userWord;
+
+      isActive = false;
+
+      isDisabled = false;
+
+      currentFocusElement = null;
+
+      userWord = null;
+
+      addEventHandlers = function(ele) {
+        ele.bind("keyup", function(event) {});
+        ele.bind("keydown", function(event) {});
+        ele.bind("focus", function(event) {
+          return inFocus(this, event);
+        });
+        return ele.bind("blur", function(event) {});
+      };
+
+      function GlobalInputHandle() {}
+
+      GlobalInputHandle.prototype.addElement = function(eleSelector) {
+        var ele;
+        ele = $(eleSelector);
+        return addEventHandlers(ele);
+      };
+
+      return GlobalInputHandle;
+
+    })();
+
     initInputHandle = function(inputAreaSelector) {
       var disable, disableToggler, inputArea, isDisabled, word;
       inputArea = $(inputAreaSelector);
@@ -228,7 +271,7 @@
         if ((!isDisabled) && (pos.start !== pos.end) && (e.keyCode === keys.enter || e.keyCode === keys.tab || e.keyCode === keys.backspace)) {
           e.preventDefault();
         }
-        if ((!isDisabled) && (e.keyCode === keys.down)) {
+        if ((!isDisabled) && (e.keyCode === keys.down || e.keyCode === keys.up)) {
           return e.preventDefault();
         }
       });
@@ -245,9 +288,15 @@
             }
             isDisabled = true;
             return disable(pos);
-          } else if (e.keyCode === keys.down) {
+          } else if (e.keyCode === keys.down && !isDisabled) {
             e.preventDefault();
             newCandidate = tipHandle.showNext();
+            if (newCandidate != null) {
+              return renderOnInputArea(inputArea, newCandidate, word.length, pos.start, pos.end);
+            }
+          } else if (e.keyCode === keys.up && !isDisabled) {
+            e.preventDefault();
+            newCandidate = tipHandle.showPrevious();
             if (newCandidate != null) {
               return renderOnInputArea(inputArea, newCandidate, word.length, pos.start, pos.end);
             }
@@ -289,11 +338,12 @@
       }
       initWordList(dictionaries);
       tipHandle = new TipHandle();
+      globalInputHandle = new GlobalInputHandle();
     }
 
     QAC.prototype.listen = function(inputAreaSelector) {
       if (inputAreaSelector != null) {
-        return initInputHandle(inputAreaSelector);
+        return globalInputHandle.addElement(inputAreaSelector);
       }
     };
 
