@@ -73,22 +73,20 @@ class QAC
 
 		loadDict = (dictInfo) ->
 			handleStatDict = (response) ->
-				wordTrie.add key, 1 for key in response
-				log wordTrie.getKeys().length + " words loaded from <code>" + dictInfo.url + "</code>"
-			if dictInfo.static
-				$.ajax {
-					url: dictInfo.url
-					dataType: 'json'
-					success: handleStatDict
-				}
-			else
-				# Ignore dynamic dictionaries at the moment.
+				trie.add key, 1 for key in response
+				log response.length + " words loaded from <code>" + dictInfo.url + "</code>"	
+			$.ajax {
+				url: dictInfo.url
+				dataType: 'json'
+				success: handleStatDict
+			}
 		constructor: () ->
 			trie = new goog.structs.Trie()
+
 		loadDicts: (dicts) ->
 			loadDict dictInfo for dictInfo in dicts
 		getCandidates: (prefix) ->
-			wordTrie.getKeys prefix
+			trie.getKeys prefix
 
 	renderOnInputArea = (inputArea, candidate, wordLength, caretPosStart, caretPosEnd) ->
 		partToRender = candidate.substring(wordLength)

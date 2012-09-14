@@ -136,19 +136,15 @@
           var key, _i, _len;
           for (_i = 0, _len = response.length; _i < _len; _i++) {
             key = response[_i];
-            wordTrie.add(key, 1);
+            trie.add(key, 1);
           }
-          return log(wordTrie.getKeys().length + " words loaded from <code>" + dictInfo.url + "</code>");
+          return log(response.length + " words loaded from <code>" + dictInfo.url + "</code>");
         };
-        if (dictInfo["static"]) {
-          return $.ajax({
-            url: dictInfo.url,
-            dataType: 'json',
-            success: handleStatDict
-          });
-        } else {
-
-        }
+        return $.ajax({
+          url: dictInfo.url,
+          dataType: 'json',
+          success: handleStatDict
+        });
       };
 
       function WordTrie() {
@@ -166,7 +162,7 @@
       };
 
       WordTrie.prototype.getCandidates = function(prefix) {
-        return wordTrie.getKeys(prefix);
+        return trie.getKeys(prefix);
       };
 
       return WordTrie;
