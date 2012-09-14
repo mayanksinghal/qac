@@ -3,7 +3,7 @@
   var QAC;
 
   QAC = (function() {
-    var GlobalInputHandle, TipHandle, defaultDict, getCurrentWord, globalInputHandle, initInputHandle, initWordList, isPrintableCharacter, isSpecialType1, keys, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
+    var GlobalInputHandle, TipHandle, WordTrie, defaultDict, globalInputHandle, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
 
     logArea = null;
 
@@ -11,7 +11,6 @@
 
     defaultDict = [
       {
-        "static": true,
         sendUpdates: false,
         url: 'js/words.php?jsoncallback=?'
       }
@@ -124,8 +123,13 @@
       }
     };
 
-    initWordList = function(dictionaries) {
-      var dictInfo, loadDict, _i, _len, _results;
+    WordTrie = (function() {
+      var loadDict, pingList, trie;
+
+      trie = null;
+
+      pingList = [];
+
       loadDict = function(dictInfo) {
         var handleStatDict;
         handleStatDict = function(response) {
@@ -146,44 +150,28 @@
 
         }
       };
-      wordTrie = new goog.structs.Trie();
-      _results = [];
-      for (_i = 0, _len = dictionaries.length; _i < _len; _i++) {
-        dictInfo = dictionaries[_i];
-        _results.push(loadDict(dictInfo));
+
+      function WordTrie() {
+        trie = new goog.structs.Trie();
       }
-      return _results;
-    };
 
-    keys = {
-      tab: 9,
-      space: 32,
-      backspace: 8,
-      enter: 13,
-      escape: 27,
-      up: 38,
-      down: 40
-    };
+      WordTrie.prototype.loadDicts = function(dicts) {
+        var dictInfo, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = dicts.length; _i < _len; _i++) {
+          dictInfo = dicts[_i];
+          _results.push(loadDict(dictInfo));
+        }
+        return _results;
+      };
 
-    isPrintableCharacter = function(keyCode) {
-      return (keyCode >= 48 && keyCode <= 90) || (keyCode >= 96 && keyCode <= 111) || (keyCode >= 186 && keyCode <= 192) || (keyCode >= 219 && keyCode <= 222);
-    };
+      WordTrie.prototype.getCandidates = function(prefix) {
+        return wordTrie.getKeys(prefix);
+      };
 
-    isSpecialType1 = function(keyCode) {
-      return keyCode === keys.backspace || keyCode === keys.space;
-    };
+      return WordTrie;
 
-    getCurrentWord = function(inputArea, position) {
-      var spacePos, text;
-      text = inputArea.val().substring(0, position + 1);
-      spacePos = text.lastIndexOf(" ");
-      if (spacePos === -1) {
-        return text;
-      } else if (spacePos === text.length) {
-        return "";
-      }
-      return text.substring(spacePos + 1);
-    };
+    })();
 
     renderOnInputArea = function(inputArea, candidate, wordLength, caretPosStart, caretPosEnd) {
       var newVal, oldVal, partToRender;
@@ -202,13 +190,13 @@
 
     takeInput = function(inputArea) {
       var candidates, currentCandidate, pos, word;
+      word = getCurrentWord(inputArea);
       pos = inputArea.caret();
-      word = getCurrentWord(inputArea, pos.start);
       if (word.length === 0) {
         tipHandle.hide();
         return word;
       }
-      candidates = wordTrie.getKeys(word);
+      candidates = wordTrie.getCandidates(word);
       currentCandidate = tipHandle.show(candidates, word.length, inputArea.getCaretPosition(), inputArea.offset());
       if (currentCandidate) {
         renderOnInputArea(inputArea, currentCandidate, word.length, pos.start);
@@ -217,116 +205,295 @@
     };
 
     GlobalInputHandle = (function() {
-      var addEventHandlers, currentFocusElement, isActive, isDisabled, userWord;
+      var acceptSuggestion, doBackSpace, findAndRenderCandidates, getCurrentWord, globalDiable, globalEnable, inList, isActive, isGlobalDisabled, isKeyCharacters, isOtherModifierPressed, isPrintableCharacter, isResetCharacters, isShift, isShiftPressed, isSpecialType1, isTempDisabled, isToolTipDisabled, keys, onBlur, onFocus, onKeyDown, onKeyUp, qacIcon, renderIcon, renderOnEle, resetCharRegex, resetTempDefaults, showNext, showPrevious, tempDisable, tempEnable;
 
       isActive = false;
 
-      isDisabled = false;
+      isTempDisabled = false;
 
-      currentFocusElement = null;
+      isGlobalDisabled = false;
 
-      userWord = null;
+      isToolTipDisabled = false;
 
-      addEventHandlers = function(ele) {
-        ele.bind("keyup", function(event) {});
-        ele.bind("keydown", function(event) {});
-        ele.bind("focus", function(event) {
-          return inFocus(this, event);
-        });
-        return ele.bind("blur", function(event) {});
+      qacIcon = null;
+
+      isShiftPressed = false;
+
+      isOtherModifierPressed = false;
+
+      inList = function(v, l) {
+        var hn, inL, li, _i, _len;
+        inL = false;
+        hn = function(li) {
+          if (v === li) {
+            return inL = true;
+          }
+        };
+        for (_i = 0, _len = l.length; _i < _len; _i++) {
+          li = l[_i];
+          hn(li);
+        }
+        return inL;
       };
 
-      function GlobalInputHandle() {}
+      resetCharRegex = /[~`!@#$%^&*()_\-=+\[\]{};:'"<>,./?\\|\s]/;
+
+      getCurrentWord = function(inputArea) {
+        var position, resetPos, text;
+        position = inputArea.caret().start;
+        text = inputArea.val().substring(0, position);
+        resetPos = text.split("").reverse().join("").search(resetCharRegex);
+        if (resetPos === -1) {
+          return text;
+        }
+        resetPos = text.length - resetPos;
+        if (resetPos === text.length) {
+          return "";
+        }
+        return text.substring(resetPos);
+      };
+
+      keys = {
+        tab: 9,
+        space: 32,
+        backspace: 8,
+        enter: 13,
+        escape: 27,
+        up: 38,
+        down: 40,
+        shift: 16,
+        ctrl: 17,
+        alt: 18,
+        window: 91,
+        other_meta: 93,
+        yet_another_meta: 224
+      };
+
+      isKeyCharacters = function(keyCode) {
+        return (keyCode >= 48 && keyCode <= 90) || (keyCode >= 96 && keyCode <= 105);
+      };
+
+      isPrintableCharacter = function(keyCode) {
+        var numbers;
+        numbers = isShiftPressed && (keyCode >= 48 && keyCode <= 57) ? false : keyCode >= 48 && keyCode <= 57;
+        return numbers || (keyCode >= 58 && keyCode <= 90) || (keyCode >= 96 && keyCode <= 111) || (keyCode >= 186 && keyCode <= 192) || (keyCode >= 219 && keyCode <= 222);
+      };
+
+      isResetCharacters = function(keyCode) {
+        return (isShiftPressed && (keyCode >= 48 && keyCode <= 57)) || inList(keyCode, [192, 189, 187, 219, 221, 220, 186, 222, 188, 190, 191, 111, 106, 109, 107, 110, 13, keys.space]);
+      };
+
+      isSpecialType1 = function(keyCode) {
+        return keyCode === keys.backspace || keyCode === keys.space;
+      };
+
+      resetTempDefaults = function() {
+        isActive = false;
+        isTempDisabled = false;
+        return tipHandle.hide();
+      };
+
+      tempDisable = function() {
+        isActive = false;
+        isTempDisabled = true;
+        tipHandle.hide();
+        return qacIcon.addClass("temp_disabled");
+      };
+
+      tempEnable = function() {
+        isTempDisabled = false;
+        return qacIcon.removeClass("temp_disabled");
+      };
+
+      globalDiable = function() {
+        isActive = false;
+        isGlobalDisabled = true;
+        qacIcon.addClass("disabled");
+        return tipHandle.hide();
+      };
+
+      globalEnable = function() {
+        isGlobalDisabled = false;
+        return qacIcon.removeClass("disabled");
+      };
+
+      renderIcon = function() {
+        qacIcon = $("<div></div>").addClass("qac_icon");
+        qacIcon.hover(function() {
+          return qacIcon.toggleClass("hover");
+        });
+        qacIcon.click((function() {
+          if (isGlobalDisabled) {
+            return globalEnable();
+          } else {
+            return globalDiable();
+          }
+        }));
+        return $('body').append(qacIcon);
+      };
+
+      renderOnEle = function(ele, partToRender, caretPosStart, caretPosEnd) {
+        var newVal, oldVal;
+        if (!(caretPosEnd != null)) {
+          caretPosEnd = caretPosStart;
+        }
+        oldVal = ele.val();
+        newVal = oldVal.substring(0, caretPosStart) + partToRender + oldVal.substring(caretPosEnd);
+        return ele.val(newVal).caret({
+          start: caretPosStart,
+          end: partToRender.length + caretPosStart
+        });
+      };
+
+      doBackSpace = function(ele) {
+        var caretPos;
+        caretPos = ele.caret();
+        return renderOnEle(ele, "", caretPos.start - 1, caretPos.end);
+      };
+
+      findAndRenderCandidates = function(ele) {
+        var candidates, currentWord;
+        isActive = true;
+        currentWord = getCurrentWord(ele);
+        if ((currentWord.length > 0) && ((candidates = wordTrie.getCandidates(currentWord)).length > 0)) {
+          tipHandle.show(candidates, currentWord.length, ele.getCaretPosition(), ele.offset());
+          renderOnEle(ele, candidates[0].substring(currentWord.length), ele.caret().start, ele.caret().end);
+        } else {
+          isActive = false;
+          tipHandle.hide();
+        }
+        return currentWord;
+      };
+
+      showPrevious = function(ele) {
+        var caretPos, currentCandidate, currentWord;
+        currentWord = getCurrentWord(ele);
+        currentCandidate = tipHandle.showPrevious();
+        if (currentCandidate) {
+          caretPos = ele.caret();
+          return renderOnEle(ele, currentCandidate.substring(currentWord.length), caretPos.start, caretPos.end);
+        }
+      };
+
+      showNext = function(ele) {
+        var caretPos, currentCandidate, currentWord;
+        currentWord = getCurrentWord(ele);
+        currentCandidate = tipHandle.showNext();
+        if (currentCandidate) {
+          caretPos = ele.caret();
+          return renderOnEle(ele, currentCandidate.substring(currentWord.length), caretPos.start, caretPos.end);
+        }
+      };
+
+      acceptSuggestion = function(ele) {
+        var caretPos;
+        caretPos = ele.caret();
+        return renderOnEle(ele, "", caretPos.end, caretPos.end);
+      };
+
+      onFocus = function(ele, event) {
+        qacIcon.css({
+          top: ele.offset().top,
+          left: ele.offset().left
+        });
+        return qacIcon.fadeIn(200);
+      };
+
+      onBlur = function(ele, event) {
+        qacIcon.fadeOut(100);
+        return resetTempDefaults();
+      };
+
+      isShift = false;
+
+      onKeyDown = function(ele, event) {
+        if (isGlobalDisabled) {
+
+        } else if (event.keyCode === keys.shift && !isShift) {
+          return isShiftPressed = true;
+        } else if (inList(event.keyCode, [keys.ctrl, keys.alt, keys.window, keys.other_meta])) {
+          isOtherModifierPressed = true;
+          return tempDisable();
+        } else if (isActive && event.keyCode === keys.backspace) {
+          event.preventDefault();
+          doBackSpace(ele);
+          return findAndRenderCandidates(ele);
+        } else if (isActive && event.keyCode === keys.up) {
+          event.preventDefault();
+          return showPrevious(ele);
+        } else if (isActive && event.keyCode === keys.down) {
+          event.preventDefault();
+          return showNext(ele);
+        } else if (!isTempDisabled && isActive && (event.keyCode === keys.tab || event.keyCode === keys.enter)) {
+          return event.preventDefault();
+        }
+      };
+
+      onKeyUp = function(ele, event) {
+        var currentWord;
+        if (event.keyCode === keys.shift) {
+          isShiftPressed = false;
+        }
+        if (inList(event.keyCode, [keys.ctrl, keys.alt, keys.window, keys.other_meta])) {
+          isOtherModifierPressed = false;
+          tempEnable();
+        }
+        if (isOtherModifierPressed) {
+          return;
+        }
+        if (event.keyCode === keys.escape) {
+          if (isGlobalDisabled) {
+            tempEnable();
+            globalEnable();
+          } else {
+            if (isTempDisabled) {
+              globalDiable();
+            } else {
+              tempDisable();
+            }
+          }
+        }
+        if (isGlobalDisabled) {
+
+        } else if (event.keyCode === keys.backspace && isTempDisabled && getCurrentWord(ele).length === 0) {
+          return tempEnable();
+        } else if (!isTempDisabled && isKeyCharacters(event.keyCode)) {
+          return currentWord = findAndRenderCandidates(ele);
+        } else if (!isTempDisabled && isResetCharacters(event.keyCode)) {
+          return resetTempDefaults();
+        } else if (!isTempDisabled && isActive && (event.keyCode === keys.tab || event.keyCode === keys.enter)) {
+          event.preventDefault();
+          acceptSuggestion(ele);
+          return tempDisable();
+        } else if (isTempDisabled && event.keyCode === keys.space) {
+          return tempEnable();
+        }
+      };
+
+      function GlobalInputHandle() {
+        renderIcon();
+      }
 
       GlobalInputHandle.prototype.addElement = function(eleSelector) {
         var ele;
         ele = $(eleSelector);
-        return addEventHandlers(ele);
+        ele.bind("keyup", function(event) {
+          return onKeyUp($(this), event);
+        });
+        ele.bind("keydown", function(event) {
+          return onKeyDown($(this), event);
+        });
+        ele.bind("focus", function(event) {
+          return onFocus($(this), event);
+        });
+        return ele.bind("blur", function(event) {
+          return onBlur($(this), event);
+        });
       };
 
       return GlobalInputHandle;
 
     })();
-
-    initInputHandle = function(inputAreaSelector) {
-      var disable, disableToggler, inputArea, isDisabled, word;
-      inputArea = $(inputAreaSelector);
-      word = null;
-      isDisabled = false;
-      disable = function(pos) {
-        renderOnInputArea(inputArea, "", word.length, pos.start, pos.end);
-        return tipHandle.hide();
-      };
-      disableToggler = function(pos) {
-        isDisabled = !isDisabled;
-        if (isDisabled) {
-          return disable(pos);
-        } else {
-          return word = takeInput(inputArea);
-        }
-      };
-      inputArea.keydown(function(e) {
-        var pos;
-        pos = $(this).caret();
-        if ((!isDisabled) && (pos.start !== pos.end) && (e.keyCode === keys.enter || e.keyCode === keys.tab || e.keyCode === keys.backspace)) {
-          e.preventDefault();
-        }
-        if ((!isDisabled) && (e.keyCode === keys.down || e.keyCode === keys.up)) {
-          return e.preventDefault();
-        }
-      });
-      return inputArea.keyup(function(e) {
-        var commonHandles, newPos, pos;
-        pos = $(this).caret();
-        commonHandles = function() {
-          var newCandidate;
-          if (e.keyCode === keys.escape) {
-            return disableToggler(pos);
-          } else if (e.keyCode === keys.backspace) {
-            if (isDisabled && getCurrentWord(inputArea).length === 0) {
-              isDisabled = false;
-            }
-            isDisabled = true;
-            return disable(pos);
-          } else if (e.keyCode === keys.down && !isDisabled) {
-            e.preventDefault();
-            newCandidate = tipHandle.showNext();
-            if (newCandidate != null) {
-              return renderOnInputArea(inputArea, newCandidate, word.length, pos.start, pos.end);
-            }
-          } else if (e.keyCode === keys.up && !isDisabled) {
-            e.preventDefault();
-            newCandidate = tipHandle.showPrevious();
-            if (newCandidate != null) {
-              return renderOnInputArea(inputArea, newCandidate, word.length, pos.start, pos.end);
-            }
-          }
-        };
-        if (pos.end !== pos.start) {
-          if (e.keyCode === keys.enter || e.keyCode === keys.tab) {
-            newPos = pos.end;
-            if (newPos < pos.start) {
-              newPos = pos.start;
-            }
-            inputArea.caret({
-              start: newPos + 1,
-              end: newPos + 1
-            });
-            return e.preventDefault();
-          } else {
-            return commonHandles();
-          }
-        } else {
-          if ((!isDisabled) && ((isPrintableCharacter(e.keyCode)) || (isSpecialType1(e.keyCode)))) {
-            return word = takeInput(inputArea);
-          } else if (e.keyCode === keys.space && isDisabled) {
-            return isDisabled = false;
-          } else {
-            return commonHandles();
-          }
-        }
-      });
-    };
 
     function QAC(logAreaSel, dictionaries) {
       if (dictionaries == null) {
@@ -336,7 +503,8 @@
         logArea = $(logAreaSel);
         log("Debugging started");
       }
-      initWordList(dictionaries);
+      wordTrie = new WordTrie();
+      wordTrie.loadDicts(dictionaries);
       tipHandle = new TipHandle();
       globalInputHandle = new GlobalInputHandle();
     }
@@ -353,7 +521,7 @@
 
   $(function() {
     var qac;
-    qac = new QAC("table.log tbody");
+    qac = new QAC("div.log table tbody");
     return qac.listen("#tryarea");
   });
 

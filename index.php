@@ -75,10 +75,12 @@
     		</div>
     		<div class="span4">
     			<div class="well">
-    				<table class="log table table-condensed table-bordered">
-						<caption>Dictionary Log</caption>
-						<tbody></tbody>
-					</table>	
+            <div class="log">
+    				  <table class="table table-condensed table-bordered">
+  						  <caption>Dictionary Log</caption>
+  						  <tbody></tbody>
+					    </table>
+            </div>
     			</div>
 				
     		</div>
@@ -95,7 +97,7 @@
     	goog.require('goog.structs.Trie');
     </script>
     <script type="text/javascript" src="js/jquery.caret.1.02.min.js"></script>
-    // <script type="text/javascript" src="js/jquery.caretposition.js"></script>
+    <script type="text/javascript" src="js/jquery.caretposition.js"></script>
     <script type="text/javascript" src="js/bin/qac.js"></script>
   </body>
 </html>
