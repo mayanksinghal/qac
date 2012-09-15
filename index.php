@@ -10,6 +10,7 @@
     <!-- Le styles -->
     <link href="css/bootstrap.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/qac.css">
     <link href="css/bootstrap-responsive.css" rel="stylesheet">
 
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
@@ -18,11 +19,7 @@
     <![endif]-->
 
     <!-- Le fav and touch icons -->
-    <link rel="shortcut icon" href="img/favicon.ico">
-    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="img/apple-touch-icon-144-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="img/apple-touch-icon-114-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="img/apple-touch-icon-72-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" href="img/apple-touch-icon-57-precomposed.png">
+    <link rel="shortcut icon" href="/favicon.ico">
   </head>
 
   <body>
@@ -38,9 +35,9 @@
           <a class="brand" href="#">QuickAutoComplete</a>
           <div class="nav-collapse collapse">
             <ul class="nav">
-              <li class="active"><a href="#">Home</a></li>
-              <li><a href="#about">Blog</a></li>
-              <li><a href="#contact">WebHome</a></li>
+              <li class="active"><a href="#">Demo</a></li>
+              <li><a href="http://blog.brotherboard.com">Blog</a></li>
+              <li><a href="http://brotherboard.com">WebHome</a></li>
             </ul>
           </div><!--/.nav-collapse -->
         </div>
@@ -51,7 +48,25 @@
     	<div class="row">
     		<div class="span4">
     			<h1>QuickAutoComplete</h1>
-          <p style="width: 250px; text-align:center; margin:auto;padding-top:200px;">
+          <p>Very-early pre-alpha zero-tests version</p>
+          
+          <dt><a href="https://github.com/mayanksinghal/qac">GITHUB</a></dt>
+          <dd>For source code, issues, pull requests and more</dd>
+
+          <dt>BLOGPOST</dt>
+          <dd>For meta, comments, pats and slaps</dd>
+
+          <dt>THANKS</dt>
+          <dd>
+            <a href="http://jquery.com">jQuery</a>,
+            <a href="http://bevis.me/jquery-caret-position-getter">jquery.caretposition</a>,
+            <a href="https://github.com/loopj/jquery-tokeninput">jquery.tokeninput</a>,
+            <a href="http://code.google.com/p/jcaret/">jquery.caret</a> and
+            <a href="http://twitter.github.com/bootstrap/">Twitter Bootstrap</a>
+          </dd>
+
+          <dt>LINCENSE (For Now)</dt>
+          <dd>
             <a rel="license"
                 href="http://creativecommons.org/licenses/by/3.0/deed.en_US">
                   <img alt="Creative Commons License"
@@ -59,7 +74,7 @@
                       src="http://i.creativecommons.org/l/by/3.0/88x31.png" />
             </a><br />
             <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">QAC</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="http://brotherboard.com" property="cc:attributionName" rel="cc:attributionURL">Mayank Singhal</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>.
-          </p>
+          </dd>
     		</div>
     		<div class="span4">
     			<div class="well">
@@ -90,7 +105,8 @@
     <!-- Le javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script> -->
+    <script src="js/jquery-1.8.0.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/assets/closure-library/closure/goog/base.js"></script>
     <script type="text/javascript">
