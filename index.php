@@ -62,8 +62,8 @@
             </p>
           </dd>
 
-          <dt>BLOGPOST</dt>
-          <dd>For meta, comments, pats and slaps</dd>
+          <dt><a href="http://blog.brotherboard.com/2012/09/15/quickautocomplete/">BLOGPOST</a></dt>
+          <dd>For meta, suggestions, pats and slaps</dd>
 
           <dt>THANKS</dt>
           <dd>
@@ -109,8 +109,8 @@
     <!-- Le javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script> -->
-    <script src="js/jquery-1.8.0.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <!-- <script src="js/jquery-1.8.0.js"></script> -->
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/assets/closure-library/closure/goog/base.js"></script>
     <script type="text/javascript">
@@ -125,6 +125,22 @@
         var qac = new QAC("div.log table tbody")
         qac.listen("#tryarea")
     });
+    </script>
+
+    <script type="text/javascript">
+
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-18609284-1']);
+    _gaq.push(['_setDomainName', 'brotherboard.com']);
+    _gaq.push(['_setAllowLinker', true]);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+
     </script>
   </body>
 </html>
