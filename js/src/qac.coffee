@@ -2,12 +2,27 @@ class QAC
 	logArea = null
 	tipHandle = null
 	defaultDict = [{
-		sendUpdates: false
+		type: 'store'
+		sendUpdates: true
 		url: 'js/words.php?jsoncallback=?'
-	}]
+		sendUrl: 'js/words.php?op=add&jsoncallback=?'
+		weight: 1
+	}, {
+		type: 'self'
+		weight: 2
+	}, {
+		type: 'page'
+		url: '/'
+		weight: 3
+	}
+	]
 	wordTrie = null
 	globalInputHandle = null
 	
+	# Reset characters -- These are the characters that separate words.
+	resetCharRegex = /[~`!@#$%^&*()_\-=+\[\]{};:'"<>,./?\\|\s]/
+
+
 	class TipHandle
 		tipArea = null
 		startOffset = 0
@@ -60,6 +75,8 @@ class QAC
 			if startOffset < 0
 				startOffset = allCandidates.length - 1
 			return showTip()
+
+	# TODO: Put logging in a flag like it is supposed to be.
 	log = (msg, cls = "info") ->
 		if logArea?
 			logArea.prepend $("<tr></tr>").addClass(cls).append $("<td></td>").html(msg)
@@ -69,31 +86,147 @@ class QAC
 
 	class WordTrie
 		trie = null
-		pingList = []
+		ping = null
+		# TODO: Complete this to send new words to various servers.
+		class PingbackHandler
+			pingObjs = {}
+			sendPing = (i, word) ->
+				return # TODO: Don't return me like that, Mayank Singhal.
+				if word?
+					pingNow i, word
+					pingObjs[i].wordList.push word
+					if !pingObjs[i].isActive
+						sendPing(i)
+					return
+				pingObjs[i].isActive = true
+				$.ajax {
+					url: pingObjs[i].url
+					dataType: 'json'
+					data: pingObjs[i].wordList.concat []
+					complete: ->
+						pingObjs[i].isActive = false
+					success: (response) ->
+						log "#{response.count} words pinged on <code>#{pingObjs[i].url}</code>"
+						if pingObjs[i].wordList.length > 0
+							sendPing i
+					error: (response) ->
+						if response.reason?
+							log "<code>#{pingObjs[i].url}</code> couldn't be pinged.
+								Reason: #{respose.reason}"
+						else
+							log "<code>#{pingObjs[i].url}</code> couldn't be pinged."
+				}
+				pingObjs[i].wordList = []
+			constructor: ->
 
-		loadDict = (dictInfo) ->
-			handleStatDict = (response) ->
-				trie.add key, 1 for key in response
-				log response.length + " words loaded from <code>" + dictInfo.url + "</code>"	
-			$.ajax {
-				url: dictInfo.url
-				dataType: 'json'
-				success: handleStatDict
-			}
+			addPingUrl: (index, url) ->
+				pingObjs[index] = {
+					url: url
+					wordList: []
+					isActive: false
+				}
+			ping: (i, word) ->
+				sendPing i, word
+			all: (word) ->
+				sendPing i, word for i, obj of pingObjs
+		
+		# TODO: This is unnecessarily loading a images and possibly other
+		# 	resources so see if there is a better apporach. Server side
+		#	stripping maybe?
+		getTextFromHTML = (html) ->
+			return $(html).text()
+
+		loadDict = (dictInfo, dictIndex) ->
+			# If HTML is present use text inside it as source for words else
+			# use current page.
+			createWordList = (htmlResponse) ->
+				if htmlResponse?
+					text = getTextFromHTML(htmlResponse)
+				else
+					text = $("body").text()
+				retVal = []
+				raw = text.split resetCharRegex
+				for w in raw
+					if w.length > 0 then retVal.push(w)
+				return retVal 
+			handleWordList = (wordList) ->
+				addCount = 0
+				mergeCount = 0
+				handleWord = (word) ->
+					if trie.containsKey word
+						# See what should be done.
+						mergeCount += 1
+						obj = trie.get word
+						obj.source.push(dictIndex)
+						trie.set word, obj
+					else
+						obj = 
+							source: [dictIndex]
+							val: dictInfo.weight
+						trie.add word, obj
+						addCount += 1
+				handleWord word for word in wordList
+				log "(#{addCount} + #{mergeCount}) words loaded from <code>#{dictInfo.url}</code>"
+			if !dictInfo.type?
+				dictInfo.type = "self"
+			if dictInfo.type == "self"
+				dictInfo.url = location.href
+			switch dictInfo.type
+				when "store"
+					$.ajax {
+						url: dictInfo.url
+						dataType: 'json'
+						success: (response) ->
+							handleWordList response
+					}
+				when "page"
+					$.ajax {
+						url: dictInfo.url
+						success: (response) ->
+							handleWordList createWordList(response)
+					}
+				when "self"
+					handleWordList createWordList()
+			if dictInfo.sendUpdates
+				ping.addPingUrl dictIndex, dictInfo.sendUrl
+
 		constructor: () ->
 			trie = new goog.structs.Trie()
+			ping = new PingbackHandler()
 
 		loadDicts: (dicts) ->
-			loadDict dictInfo for dictInfo in dicts
+			loadDict dictInfo, i for dictInfo, i in dicts
 		getCandidates: (prefix) ->
-			trie.getKeys prefix
+			keys = trie.getKeys prefix
+			pq = new goog.structs.PriorityQueue()
+			pq.enqueue (0 - trie.get(key).val), key  for key in keys
+			sortedKeys = []
+			while typeof (head = pq.dequeue()) != 'undefined'
+				sortedKeys.push head
+			return sortedKeys
+			# TODO: Use values to sort the keys in order of their likelihood of occurrence.
+		pingAsRequired: (word) ->
+			# TODO: Ping usage of the word after finding who should be pinged.
+		addIfNew: (word) ->
+			# Verify new word.
+			if trie.containsKey(word) or word.length == 0
+				return
+			log "Adding: " + word
+			# Add locally.
+			trie.add word, {
+				source: [-1]
+				val: 4
+			}
+			# Ping all the servers
+			ping.all(word)
+
 
 	renderOnInputArea = (inputArea, candidate, wordLength, caretPosStart, caretPosEnd) ->
 		partToRender = candidate.substring(wordLength)
 		oldVal = inputArea.val()
 		if !caretPosEnd?
 			caretPosEnd = caretPosStart	
-		newVal = oldVal.substring(0, caretPosStart) + partToRender + oldVal.substring(caretPosEnd)
+		newVal = "#{oldVal.substring(0, caretPosStart)}#{partToRender}#{oldVal.substring(caretPosEnd)}"
 		inputArea.val newVal
 		inputArea.caret({
 			start: caretPosStart
@@ -134,9 +267,12 @@ class QAC
 				hn li for li in l
 				return inL
 		# Returns the word before the caret position
-		resetCharRegex = /[~`!@#$%^&*()_\-=+\[\]{};:'"<>,./?\\|\s]/
-		getCurrentWord = (inputArea) ->
+		# @param inputArea InputArea to pick from
+		# @param ignoreChar Ignore the last character
+		getCurrentWord = (inputArea, ignoreChar = false) ->
 			position = inputArea.caret().start
+			if ignoreChar
+				position -= 1
 			text = inputArea.val().substring 0, position
 			resetPos = text.split("").reverse().join("").search resetCharRegex
 			if resetPos == -1
@@ -306,16 +442,18 @@ class QAC
 			# For 'key' characters, do autocomplete.
 			else if !isTempDisabled and isKeyCharacters(event.keyCode)
 				currentWord = findAndRenderCandidates ele
-			# For reset characters, do reset of words.
-			else if !isTempDisabled and isResetCharacters(event.keyCode)
-				# Do something.
-				resetTempDefaults()
 			else if !isTempDisabled and isActive and (event.keyCode == keys.tab or event.keyCode == keys.enter)
 				event.preventDefault()
 				acceptSuggestion(ele)
 				tempDisable()
-			else if isTempDisabled and event.keyCode == keys.space
-				tempEnable()
+			else if (!isActive) and isResetCharacters(event.keyCode)
+				# This will always happen if there were no suggestions.
+				wordTrie.addIfNew getCurrentWord ele, true
+			# For reset characters, do reset of words.
+			else if isResetCharacters(event.keyCode)
+				# This won't happen if there were suggestions.
+				resetTempDefaults()
+
 
 		constructor: () ->
 			renderIcon()
@@ -341,6 +479,4 @@ class QAC
 	listen: (inputAreaSelector) ->
 		if inputAreaSelector?
 			globalInputHandle.addElement inputAreaSelector
-$ ->
-	qac = new QAC "div.log table tbody"
-	qac.listen "#tryarea"
+window.QAC = QAC

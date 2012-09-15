@@ -3,7 +3,7 @@
   var QAC;
 
   QAC = (function() {
-    var GlobalInputHandle, TipHandle, WordTrie, defaultDict, globalInputHandle, log, logArea, renderOnInputArea, takeInput, tipHandle, wordTrie;
+    var GlobalInputHandle, TipHandle, WordTrie, defaultDict, globalInputHandle, log, logArea, renderOnInputArea, resetCharRegex, takeInput, tipHandle, wordTrie;
 
     logArea = null;
 
@@ -11,14 +11,26 @@
 
     defaultDict = [
       {
-        sendUpdates: false,
-        url: 'js/words.php?jsoncallback=?'
+        type: 'store',
+        sendUpdates: true,
+        url: 'js/words.php?jsoncallback=?',
+        sendUrl: 'js/words.php?op=add&jsoncallback=?',
+        weight: 1
+      }, {
+        type: 'self',
+        weight: 2
+      }, {
+        type: 'page',
+        url: '/',
+        weight: 3
       }
     ];
 
     wordTrie = null;
 
     globalInputHandle = null;
+
+    resetCharRegex = /[~`!@#$%^&*()_\-=+\[\]{};:'"<>,./?\\|\s]/;
 
     TipHandle = (function() {
       var MaxRenderCount, allCandidates, highlightLength, offset, position, showTip, startOffset, tipArea;
@@ -124,45 +136,203 @@
     };
 
     WordTrie = (function() {
-      var loadDict, pingList, trie;
+      var PingbackHandler, getTextFromHTML, loadDict, ping, trie;
 
       trie = null;
 
-      pingList = [];
+      ping = null;
 
-      loadDict = function(dictInfo) {
-        var handleStatDict;
-        handleStatDict = function(response) {
-          var key, _i, _len;
-          for (_i = 0, _len = response.length; _i < _len; _i++) {
-            key = response[_i];
-            trie.add(key, 1);
+      PingbackHandler = (function() {
+        var pingObjs, sendPing;
+
+        pingObjs = {};
+
+        sendPing = function(i, word) {
+          return;
+          if (word != null) {
+            pingNow(i, word);
+            pingObjs[i].wordList.push(word);
+            if (!pingObjs[i].isActive) {
+              sendPing(i);
+            }
+            return;
           }
-          return log(response.length + " words loaded from <code>" + dictInfo.url + "</code>");
+          pingObjs[i].isActive = true;
+          $.ajax({
+            url: pingObjs[i].url,
+            dataType: 'json',
+            data: pingObjs[i].wordList.concat([]),
+            complete: function() {
+              return pingObjs[i].isActive = false;
+            },
+            success: function(response) {
+              log("" + response.count + " words pinged on <code>" + pingObjs[i].url + "</code>");
+              if (pingObjs[i].wordList.length > 0) {
+                return sendPing(i);
+              }
+            },
+            error: function(response) {
+              if (response.reason != null) {
+                return log("<code>" + pingObjs[i].url + "</code> couldn't be pinged.								Reason: " + respose.reason);
+              } else {
+                return log("<code>" + pingObjs[i].url + "</code> couldn't be pinged.");
+              }
+            }
+          });
+          return pingObjs[i].wordList = [];
         };
-        return $.ajax({
-          url: dictInfo.url,
-          dataType: 'json',
-          success: handleStatDict
-        });
+
+        function PingbackHandler() {}
+
+        PingbackHandler.prototype.addPingUrl = function(index, url) {
+          return pingObjs[index] = {
+            url: url,
+            wordList: [],
+            isActive: false
+          };
+        };
+
+        PingbackHandler.prototype.ping = function(i, word) {
+          return sendPing(i, word);
+        };
+
+        PingbackHandler.prototype.all = function(word) {
+          var i, obj, _results;
+          _results = [];
+          for (i in pingObjs) {
+            obj = pingObjs[i];
+            _results.push(sendPing(i, word));
+          }
+          return _results;
+        };
+
+        return PingbackHandler;
+
+      })();
+
+      getTextFromHTML = function(html) {
+        return $(html).text();
+      };
+
+      loadDict = function(dictInfo, dictIndex) {
+        var createWordList, handleWordList;
+        createWordList = function(htmlResponse) {
+          var raw, retVal, text, w, _i, _len;
+          if (htmlResponse != null) {
+            text = getTextFromHTML(htmlResponse);
+          } else {
+            text = $("body").text();
+          }
+          retVal = [];
+          raw = text.split(resetCharRegex);
+          for (_i = 0, _len = raw.length; _i < _len; _i++) {
+            w = raw[_i];
+            if (w.length > 0) {
+              retVal.push(w);
+            }
+          }
+          return retVal;
+        };
+        handleWordList = function(wordList) {
+          var addCount, handleWord, mergeCount, word, _i, _len;
+          addCount = 0;
+          mergeCount = 0;
+          handleWord = function(word) {
+            var obj;
+            if (trie.containsKey(word)) {
+              mergeCount += 1;
+              obj = trie.get(word);
+              obj.source.push(dictIndex);
+              return trie.set(word, obj);
+            } else {
+              obj = {
+                source: [dictIndex],
+                val: dictInfo.weight
+              };
+              trie.add(word, obj);
+              return addCount += 1;
+            }
+          };
+          for (_i = 0, _len = wordList.length; _i < _len; _i++) {
+            word = wordList[_i];
+            handleWord(word);
+          }
+          return log("(" + addCount + " + " + mergeCount + ") words loaded from <code>" + dictInfo.url + "</code>");
+        };
+        if (!(dictInfo.type != null)) {
+          dictInfo.type = "self";
+        }
+        if (dictInfo.type === "self") {
+          dictInfo.url = location.href;
+        }
+        switch (dictInfo.type) {
+          case "store":
+            $.ajax({
+              url: dictInfo.url,
+              dataType: 'json',
+              success: function(response) {
+                return handleWordList(response);
+              }
+            });
+            break;
+          case "page":
+            $.ajax({
+              url: dictInfo.url,
+              success: function(response) {
+                return handleWordList(createWordList(response));
+              }
+            });
+            break;
+          case "self":
+            handleWordList(createWordList());
+        }
+        if (dictInfo.sendUpdates) {
+          return ping.addPingUrl(dictIndex, dictInfo.sendUrl);
+        }
       };
 
       function WordTrie() {
         trie = new goog.structs.Trie();
+        ping = new PingbackHandler();
       }
 
       WordTrie.prototype.loadDicts = function(dicts) {
-        var dictInfo, _i, _len, _results;
+        var dictInfo, i, _i, _len, _results;
         _results = [];
-        for (_i = 0, _len = dicts.length; _i < _len; _i++) {
-          dictInfo = dicts[_i];
-          _results.push(loadDict(dictInfo));
+        for (i = _i = 0, _len = dicts.length; _i < _len; i = ++_i) {
+          dictInfo = dicts[i];
+          _results.push(loadDict(dictInfo, i));
         }
         return _results;
       };
 
       WordTrie.prototype.getCandidates = function(prefix) {
-        return trie.getKeys(prefix);
+        var head, key, keys, pq, sortedKeys, _i, _len;
+        keys = trie.getKeys(prefix);
+        pq = new goog.structs.PriorityQueue();
+        for (_i = 0, _len = keys.length; _i < _len; _i++) {
+          key = keys[_i];
+          pq.enqueue(0 - trie.get(key).val, key);
+        }
+        sortedKeys = [];
+        while (typeof (head = pq.dequeue()) !== 'undefined') {
+          sortedKeys.push(head);
+        }
+        return sortedKeys;
+      };
+
+      WordTrie.prototype.pingAsRequired = function(word) {};
+
+      WordTrie.prototype.addIfNew = function(word) {
+        if (trie.containsKey(word) || word.length === 0) {
+          return;
+        }
+        log("Adding: " + word);
+        trie.add(word, {
+          source: [-1],
+          val: 4
+        });
+        return ping.all(word);
       };
 
       return WordTrie;
@@ -176,7 +346,7 @@
       if (!(caretPosEnd != null)) {
         caretPosEnd = caretPosStart;
       }
-      newVal = oldVal.substring(0, caretPosStart) + partToRender + oldVal.substring(caretPosEnd);
+      newVal = "" + (oldVal.substring(0, caretPosStart)) + partToRender + (oldVal.substring(caretPosEnd));
       inputArea.val(newVal);
       return inputArea.caret({
         start: caretPosStart,
@@ -201,7 +371,7 @@
     };
 
     GlobalInputHandle = (function() {
-      var acceptSuggestion, doBackSpace, findAndRenderCandidates, getCurrentWord, globalDiable, globalEnable, inList, isActive, isGlobalDisabled, isKeyCharacters, isOtherModifierPressed, isPrintableCharacter, isResetCharacters, isShift, isShiftPressed, isSpecialType1, isTempDisabled, isToolTipDisabled, keys, onBlur, onFocus, onKeyDown, onKeyUp, qacIcon, renderIcon, renderOnEle, resetCharRegex, resetTempDefaults, showNext, showPrevious, tempDisable, tempEnable;
+      var acceptSuggestion, doBackSpace, findAndRenderCandidates, getCurrentWord, globalDiable, globalEnable, inList, isActive, isGlobalDisabled, isKeyCharacters, isOtherModifierPressed, isPrintableCharacter, isResetCharacters, isShift, isShiftPressed, isSpecialType1, isTempDisabled, isToolTipDisabled, keys, onBlur, onFocus, onKeyDown, onKeyUp, qacIcon, renderIcon, renderOnEle, resetTempDefaults, showNext, showPrevious, tempDisable, tempEnable;
 
       isActive = false;
 
@@ -232,11 +402,15 @@
         return inL;
       };
 
-      resetCharRegex = /[~`!@#$%^&*()_\-=+\[\]{};:'"<>,./?\\|\s]/;
-
-      getCurrentWord = function(inputArea) {
+      getCurrentWord = function(inputArea, ignoreChar) {
         var position, resetPos, text;
+        if (ignoreChar == null) {
+          ignoreChar = false;
+        }
         position = inputArea.caret().start;
+        if (ignoreChar) {
+          position -= 1;
+        }
         text = inputArea.val().substring(0, position);
         resetPos = text.split("").reverse().join("").search(resetCharRegex);
         if (resetPos === -1) {
@@ -455,14 +629,14 @@
           return tempEnable();
         } else if (!isTempDisabled && isKeyCharacters(event.keyCode)) {
           return currentWord = findAndRenderCandidates(ele);
-        } else if (!isTempDisabled && isResetCharacters(event.keyCode)) {
-          return resetTempDefaults();
         } else if (!isTempDisabled && isActive && (event.keyCode === keys.tab || event.keyCode === keys.enter)) {
           event.preventDefault();
           acceptSuggestion(ele);
           return tempDisable();
-        } else if (isTempDisabled && event.keyCode === keys.space) {
-          return tempEnable();
+        } else if ((!isActive) && isResetCharacters(event.keyCode)) {
+          return wordTrie.addIfNew(getCurrentWord(ele, true));
+        } else if (isResetCharacters(event.keyCode)) {
+          return resetTempDefaults();
         }
       };
 
@@ -515,10 +689,6 @@
 
   })();
 
-  $(function() {
-    var qac;
-    qac = new QAC("div.log table tbody");
-    return qac.listen("#tryarea");
-  });
+  window.QAC = QAC;
 
 }).call(this);

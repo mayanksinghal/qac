@@ -61,19 +61,14 @@
             <a href="http://jquery.com">jQuery</a>,
             <a href="http://bevis.me/jquery-caret-position-getter">jquery.caretposition</a>,
             <a href="https://github.com/loopj/jquery-tokeninput">jquery.tokeninput</a>,
-            <a href="http://code.google.com/p/jcaret/">jquery.caret</a> and
+            <a href="http://code.google.com/p/jcaret/">jquery.caret</a>,
+            <a href="https://code.google.com/p/closure-library/">Closure Library</a> and
             <a href="http://twitter.github.com/bootstrap/">Twitter Bootstrap</a>
           </dd>
 
-          <dt>LINCENSE (For Now)</dt>
+          <dt>LINCENSE</dt>
           <dd>
-            <a rel="license"
-                href="http://creativecommons.org/licenses/by/3.0/deed.en_US">
-                  <img alt="Creative Commons License"
-                      style="border-width:0"
-                      src="http://i.creativecommons.org/l/by/3.0/88x31.png" />
-            </a><br />
-            <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">QAC</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="http://brotherboard.com" property="cc:attributionName" rel="cc:attributionURL">Mayank Singhal</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>.
+            MIT Licence. Copyright 2012, Mayank Singhal.
           </dd>
     		</div>
     		<div class="span4">
@@ -111,9 +106,16 @@
     <script type="text/javascript" src="/assets/closure-library/closure/goog/base.js"></script>
     <script type="text/javascript">
     	goog.require('goog.structs.Trie');
+      goog.require('goog.structs.PriorityQueue');
     </script>
     <script type="text/javascript" src="js/jquery.caret.1.02.min.js"></script>
     <script type="text/javascript" src="js/jquery.caretposition.js"></script>
     <script type="text/javascript" src="js/bin/qac.js"></script>
+    <script type="text/javascript">
+    $(document).ready(function() {
+        var qac = new QAC("div.log table tbody")
+        qac.listen("#tryarea")
+    });
+    </script>
   </body>
 </html>
