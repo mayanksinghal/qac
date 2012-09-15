@@ -7,6 +7,10 @@ Status
 ------
 Very-early pre-alpha zero-tests version
 
+Demo
+----
+http://brotherboard.com/demoes/qac
+
 Intent
 ------
 To make it good enough so that lazy people can use it all over the web
