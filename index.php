@@ -50,8 +50,17 @@
     			<h1>QuickAutoComplete</h1>
           <p>Very-early pre-alpha zero-tests version</p>
           
-          <dt><a href="https://github.com/mayanksinghal/qac">GITHUB</a></dt>
-          <dd>For source code, issues, pull requests and more</dd>
+          <dt>
+            <a href="https://github.com/mayanksinghal/qac">GITHUB</a>
+          </dt>
+          <dd>For source code, issues, pull requests and more
+            <p>
+              <iframe src="http://ghbtns.com/github-btn.html?user=mayanksinghal&repo=qac&type=fork&count=true"
+                    allowtransparency="true" frameborder="0" scrolling="0" width="95px" height="20px"></iframe>
+              <iframe src="http://ghbtns.com/github-btn.html?user=mayanksinghal&repo=qac&type=watch&count=true"
+                    allowtransparency="true" frameborder="0" scrolling="0" width="110px" height="20px"></iframe>
+            </p>
+          </dd>
 
           <dt>BLOGPOST</dt>
           <dd>For meta, comments, pats and slaps</dd>
@@ -109,8 +118,8 @@
       goog.require('goog.structs.PriorityQueue');
     </script>
     <script type="text/javascript" src="js/jquery.caret.1.02.min.js"></script>
-    <script type="text/javascript" src="js/jquery.caretposition.js"></script>
-    <script type="text/javascript" src="js/bin/qac.js"></script>
+    <script type="text/javascript" src="js/jquery.caretposition.min.js"></script>
+    <script type="text/javascript" src="js/bin/qac.min.js"></script>
     <script type="text/javascript">
     $(document).ready(function() {
         var qac = new QAC("div.log table tbody")
